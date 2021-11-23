@@ -98,10 +98,14 @@
 						parentId: (node ? node.id : 0)
 					},
 					success: function(data){
-						tree.tree('append', {
-							parent: (node ? node.target : null),
-							data: [data]
-						});
+					    if (data.id == undefined) {
+					        $.messager.show(data);
+					    } else {
+							tree.tree('append', {
+                                parent: (node ? node.target : null),
+                                data: [data]\
+                            });
+						}
 					}
 				});
 			});
@@ -130,8 +134,6 @@
 						if (r){
 							if (opts.destroyUrl){
 								$.post(opts.destroyUrl, {id:node.id}, function(data){
-								    // add by taoguanming, 此处应根据destroyurl的返回情况，决定是否删除节点
-								    console.log('delete:', data);
 								    if (data.success == true) {
 									    tree.tree('remove', node.target);
 									}
