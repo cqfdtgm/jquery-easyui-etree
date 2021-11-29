@@ -1,20 +1,20 @@
 /**
  * etree - jQuery EasyUI
- * 
+ *
  * Licensed under the GPL:
  *   http://www.gnu.org/licenses/gpl.txt
  *
- * Copyright 2011 stworthy [ stworthy@gmail.com ] 
- * 
+ * Copyright 2011 stworthy [ stworthy@gmail.com ]
+ *
  * Dependencies:
  *   tree
  *   messager
- * 
+ *
  */
 (function($){
 	function createTree(target){
 		var opts = $.data(target, 'etree').options;
-		
+
 		$(target).tree($.extend({}, opts, {
 			onDblClick: function(node){
 				$(this).tree('beginEdit', node.target);
@@ -43,9 +43,7 @@
 			onBeforeDrop: function(targetNode, source, point){
 				var targetId = $(target).tree('getNode', targetNode).id;
 				var data = $.ajax({
-					url: opts.dndUrl
-					, type: 'post'
-					, dataType: 'json',
+					url: opts.dndUrl, type: 'post', dataType: 'json',
 					async: false,       // 使用同步提交，根据返回结果决定如何处理！！
 					data: { id: source.id, targetId: targetId, point: point }
 				}).responseJSON;
@@ -59,12 +57,9 @@
                 if ('children' in node && 'total' in node && node.total>node.children.length) {
                     $('#pp').remove();
                     tree = this;
-                    pp = $('<div id="pp" style="position:relative;top:-6px;float:right"></div>').appendTo(node.target);
-                    pp.pagination({layout:['prev', 'links', 'next']
-                        ,displayMsg:''
-                        ,total:node.total
-                        ,pageSize:node.pagesize
-                        ,pageNumber: node.pageNumber
+                    pp = $('<div id="pp" style="position:relative;top:-6px;left:200px;BBfloat:right;display:inline-block"></div>').appendTo(node.target);
+                    pp.pagination({layout:['prev', 'links', 'next'], displayMsg:'', total:node.total
+                        ,pageSize:node.pagesize, pageNumber: node.pageNumber
                         ,onSelectPage: function(pageNumber, pageSize) {
                             opts['queryParams']['page'] = pageNumber;
                             $(tree).tree('reload', node.target);
@@ -73,8 +68,34 @@
                         }
                     });
                 }
-				opts.onSelect.call(node); },
-			onExpand: function(node) {
+				opts.onSelect.call(node);
+			}
+           ,loadFilter: function(data) {
+                if (data.d) {
+                    return data.d;
+                } else if (data.total) {    // 如果返回的是select形式，表明需要翻页
+                    parentNode = $(this).tree('find', data.rows[0].parentid);
+                    if (parentNode) {
+                        parentNode.total = data.total;
+                        parentNode.pagesize = data.pagesize;
+                    } else {    // 是顶层目录，如果记录数超过一——显示翻页插件
+                        tree = this;
+                        $('#pp0').css({visibility:"visible"}).pagination({
+                            total:data.total, pageSize: data.pagesize
+                            ,layout: ['prev', 'links', 'next'], displayMsg:''
+                            ,onSelectPage: function(pageNumber, pageSize) {
+                                opts['queryParams']['page'] = pageNumber;
+                                $(tree).tree('reload');
+                                opts['queryParams']['page'] = undefined;
+                            }
+                        });
+                    }
+                    return data.rows;
+                } else {
+                    return data;
+                }
+            }
+			,onExpand: function(node) {
 			    $(this).tree('select', node.target);
 			    opts.onExpand.call(node);
 			}
@@ -122,7 +143,6 @@
 						parentId: (node ? node.id : 0)
 					},
 					success: function(data){
-					    console.log('create:', data, data.isError);
 					    if (data.isError) { //如果增加不成功，返回的对象不会含id属性
 					        $.messager.show(data);
 					    } else {
