@@ -80,6 +80,9 @@
                         parentNode.pagesize = data.pagesize;
                     } else {    // 是顶层目录，如果记录数超过一——显示翻页插件
                         tree = this;
+                        $('#pp0').remove();
+                        $('<div id="pp0"></div>').insertBefore($(this));
+                        // 根目录的翻页控件，可以提前放置在指定位置，则上面不需要删除后再插入。
                         $('#pp0').css({visibility:"visible"}).pagination({
                             total:data.total, pageSize: data.pagesize
                             ,layout: ['prev', 'links', 'next'], displayMsg:''
