@@ -1,0 +1,118 @@
+<!DOCTYPE html PUBLIC "-//W3C/DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>sparrow based on cherrypy, mako,sqlite3</title>
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <link rel="bookmark" href="/images/favicon.ico">
+    <link rel="stylesheet" type="text/css" href="/js/9_easyui/themes/default/easyui.css">
+    <link rel="stylesheet" type="text/css" href="/js/9_easyui/themes/icon.css">
+    <link rel="stylesheet" type="text/css" href="/js/9_easyui/themes/color.css">
+    <link rel="stylesheet" type="text/css" href="/js/9_easyui/demo/demo.css">
+    <script type="text/javascript" src="/js/9_easyui/jquery.min.js"></script>
+    <script type="text/javascript" src="/js/9_easyui/jquery.easyui.min.js"></script>
+    <script type="text/javascript" src="/js/9_easyui/locale/easyui-lang-zh_CN.js"></script>
+    <script type="text/javascript" src="/js/9_easyui/jquery.etree.js"></script>
+
+    <style type="text/css">
+	<!--
+	a:link {  color: #000000; text-decoration: none}
+	a:visited {  color: #000000; text-decoration: none}
+	a:hover {  color: #000000; text-decoration: none}
+	body {font-size: 14px }
+	-->
+    </style>
+</head>
+<body>
+
+<script type="text/javascript">
+    $(function(){
+        $('#tr').tree({
+            url: "tree?table=org" ,method: "get" ,checkbox:false ,lines:true
+            ,dnd:false	//拖动太容易出错了，特别是在手机上。
+            //  前端想禁止追加或拖动后突破下级数量限制，脚本过于复杂，统一通过后端判断后端返回值来处理。
+            ,formatter: function(node) {    //为便于高度，显示节点更多信息
+                return node.id + ': ' +  node.text + ' ' + node.state + ' ' + node.display;
+            }
+            ,loadFilter: function(data) {
+                console.log('load in default', data);
+                if (data.d) {
+                    return data.d;
+                } else if (data.total) {    // 如果返回的是select形式，表明需要翻页
+                    parentNode = $(this).tree('find', data.rows[0].parentid);
+                    if (parentNode) {
+                        parentNode.total = data.total;
+                        parentNode.pagesize = data.pagesize;
+                    } else {    // 是顶层目录，如果记录数超过一——显示翻页插件
+                        tree = this;
+                        $('#pp0').remove();
+                        $('<div id="pp0"></div>').insertBefore($(this));
+                        // 根目录的翻页控件，可以提前放置在指定位置，则上面不需要删除后再插入。
+                        $('#pp0').css({visibility:"visible"}).pagination({
+                            total:data.total, pageSize: data.pagesize, pageNumber: data.pagenumber
+                            ,layout: ['prev', 'links', 'next'], displayMsg:''
+                            ,onSelectPage: function(pageNumber, pageSize) {
+                                opts = $(tree).tree('options');
+                                opts['queryParams']['page'] = pageNumber;
+                                $(tree).tree('reload');
+                                opts['queryParams']['page'] = undefined;
+                            }
+                        });
+                    }
+                    return data.rows;
+                } else {
+                    return data;
+                }
+            },
+            onSelect: function(node) {
+                if ('children' in node && 'total' in node && node.total>node.children.length) {
+                    $('#pp').remove();
+                    tree = this;
+                    pp = $('<span id="pp" style="position:relative;top:-6px;right:0px;float:right;display:inline-block"></span>').appendTo(node.target);
+                    pp.pagination({layout:['prev', 'links', 'next'], displayMsg:'', total:node.total
+                        ,pageSize:node.pagesize, pageNumber: node.pageNumber
+                        ,onSelectPage: function(pageNumber, pageSize) {
+                            opts = $(tree).tree('options');
+                            opts['queryParams']['page'] = pageNumber;
+                            $(tree).tree('reload', node.target);
+                            opts['queryParams']['page'] = undefined;
+                            node.pageNumber = pageNumber;
+                        }
+                    });
+                }
+			},
+			onExpand: function(node) {
+			    $(this).tree('select', node.target);
+			}
+        });
+    });
+</script>
+
+<script type="text/javascript">
+    $(function(){       // 这一段代码使树结构变成可编辑状态，可拖拽。
+        console.log('start...');
+        opts = $('#tr').tree('options');
+        $('#tr').etree(opts).tree('enableDnd');
+    });
+</script>
+
+
+<div id="toolbar" style="margin:5px width:98%">
+    <div style="display:inline-block;position:relative;top:0px">
+    <a href="#" class="easyui-linkbutton" iconCls="icon-add" plain="true" onclick="javascript:$('#tr').etree('create')"></a>
+    <a href="#" class="easyui-linkbutton" iconCls="icon-remove" plain="true" onclick="javascript:$('#tr').etree('destroy')" title="删除目前选中行" ></a>
+    <a href="#" class="easyui-linkbutton" iconCls="icon-edit" plain="true" onclick="javascript:$('#tr').etree('edit')" title="双击亦可进入编辑模式"></a>
+    <a href="#" class="easyui-linkbutton" iconCls="icon-save" plain="true" onclick="javascript:$('#tr').etree('endEdit')" title="回车亦可进行保存"></a>
+    <a href="#" class="easyui-linkbutton" disabled="true" iconCls="icon-undo" plain="true" onclick="javascript:$('#tr').etree('cancelEdit')" title="取消编辑，不可点按此键，必须按ESC键才能取消"></a>
+    <a href="#" class="easyui-linkbutton" iconCls="icon-reload" plain="true" onclick="javascript:$('#tr').etree('reload')" title=""></a>
+    </div>
+</div>
+
+<div style="height:100%">
+    <ul id="tr" data-options="createUrl:'insert?table=org', updateUrl:'update?table=org', destroyUrl:'delete?table=org', dndUrl:'dnd?table=org', fit:true, Url:'tree?table=org'"></ul>
+
+</div>
+
+</body>
+</html>
